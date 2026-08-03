@@ -2,6 +2,9 @@
 
 A Python-based web application designed to streamline and automate User Acceptance Testing (UAT) workflows. This repository provides an extensible framework for running, tracking, and managing user acceptance criteria before production release.
 
+🌐 **Live Interactive Web App:** [Launch Live Streamlit Dashboard](https://uat-tester-app-gfey4bdkemw3rlriwt8rep.streamlit.app/)
+
+
 ## 🚀 Features
 * **Automated UAT Pipelines:** Integrated GitHub Actions workflows to handle continuous integration and automated test validation.
 * **Lightweight Backend:** Structured using a standalone Python (`app.py`) environment for easy routing or testing utility execution.
