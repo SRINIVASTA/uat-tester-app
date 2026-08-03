@@ -16,16 +16,14 @@ if "test_cases" not in st.session_state:
 if "current_mode" not in st.session_state:
     st.session_state.current_mode = None
 
-# -------------------------------------------------------------
-# CORE INTEGRATION: BOTH OPTIONS CONFIGURATION (SYNTHETIC & UPLOAD)
-# -------------------------------------------------------------
+# Sidebar Configuration
 st.sidebar.header("⚙️ Data Settings")
 data_option = st.sidebar.radio(
     "Choose your data source:",
     ("Option A: Use Synthetic Data", "Option B: Upload Custom CSV Data")
 )
 
-# Option A: Handle Synthetic Data Generation (Auto-Populated Base)
+# Option A: Handle Synthetic Data Generation (Updated with Severity fields)
 if data_option == "Option A: Use Synthetic Data":
     if st.session_state.current_mode != "synthetic" or not st.session_state.test_cases:
         st.session_state.test_cases = [
@@ -87,12 +85,8 @@ elif data_option == "Option B: Upload Custom CSV Data":
         template_df = pd.DataFrame(columns=["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester"])
         template_csv = template_df.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Empty CSV Template Schema", data=template_csv, file_name="uat_template.csv", mime="text/csv")
-
-# -------------------------------------------------------------
-# MAIN INTERFACE WORKFLOWS (IF DATA CONTAINS ROWS)
-# -------------------------------------------------------------
+# Main Interface Workflows (If Data Contains Rows)
 if st.session_state.test_cases:
-    # FIXED: Explicit column count protects the dashboard layout on launch
     col_left, col_right = st.columns(2)
 
     # Left Column: Add test cases dynamically
@@ -150,9 +144,7 @@ if st.session_state.test_cases:
                     st.success(f"Saved execution adjustments for {tc['id']}!")
                     st.rerun()
 
-    # -------------------------------------------------------------
-    # METRICS & GRAPHICS DASHBOARD
-    # -------------------------------------------------------------
+    # Metrics & Graphics Dashboard
     st.divider()
     st.header("📊 Sign-Off Report & Breakout Metrics")
     df = pd.DataFrame(st.session_state.test_cases)
@@ -164,7 +156,7 @@ if st.session_state.test_cases:
     m3.metric("Failed 🚨", len(df[df['status'] == 'Failed']))
     m4.metric("Untested", len(df[df['status'] == 'Untested']))
     
-    # Graphic Layout Partition: Table Left, Dynamic Pie Chart Right
+    # Graphic Layout Partition
     graph_col_left, graph_col_right = st.columns(2)
     
     with graph_col_left:
@@ -173,19 +165,36 @@ if st.session_state.test_cases:
     
     with graph_col_right:
         st.subheader("Status Breakout Chart")
-        status_counts = df['status'].value_counts()
         
-        # Color coding configuration profiles matching UI states
-        color_map = {'Passed': '#2ecc71', 'Failed': '#e74c3c', 'Untested': '#95a5a6', 'Blocked': '#f39c12'}
-        colors = [color_map.get(status, '#3498db') for status in status_counts.index]
-        
-        # Render clean matplotlib graphic container objects
-        fig, ax = plt.subplots(figsize=(4, 4))
-        ax.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', startangle=140, colors=colors, textprops={'fontsize': 10})
-        ax.axis('equal')
-        fig.patch.set_facecolor('none')  # Transparent backdrop configuration integration
-        ax.set_facecolor('none')
-        st.pyplot(fig)
+        if not df.empty and 'status' in df.columns:
+            status_counts = df['status'].value_counts()
+            
+            fig, ax = plt.subplots(figsize=(3, 3))
+            color_map = {'Passed': '#2ecc71', 'Failed': '#e74c3c', 'Untested': '#95a5a6', 'Blocked': '#f39c12'}
+            colors = [color_map.get(status, '#3498db') for status in status_counts.index]
+            
+            wedges, texts, autotexts = ax.pie(
+                status_counts, 
+                labels=status_counts.index, 
+                autopct='%1.1f%%', 
+                startangle=140, 
+                colors=colors,
+                wedgeprops=dict(width=0.4, edgecolor='white', linewidth=2)
+            )
+            
+            for text in texts:
+                text.set_color('#1e293b')
+                text.set_fontsize(9)
+            for autotext in autotexts:
+                autotext.set_color('#1e293b')
+                autotext.set_fontsize(8)
+                autotext.set_weight('bold')
+                
+            fig.patch.set_facecolor('none')
+            ax.set_facecolor('none')
+            st.pyplot(fig, use_container_width=False)
+        else:
+            st.warning("No data rows available to render metrics visual breakdown matrix chart components.")
 
     # Export Feature
     csv_data = df.to_csv(index=False).encode('utf-8')
