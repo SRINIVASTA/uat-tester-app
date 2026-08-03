@@ -81,7 +81,8 @@ elif data_option == "Option B: Upload Custom CSV Data":
 
 # Render interface workflows if elements exist in scope
 if st.session_state.test_cases:
-    col_left, col_right = st.columns()
+    # FIXED: Added integer '2' to explicitly declare the side-by-side workspace split
+    col_left, col_right = st.columns(2)
 
     # Left Column: Add test cases dynamically
     with col_left:
@@ -151,7 +152,7 @@ if st.session_state.test_cases:
     m4.metric("Untested", len(df[df['status'] == 'Untested']))
     
     # Graphic Layout Partition: Table Left, Dynamic Pie Chart Right
-    graph_col_left, graph_col_right = st.columns([2, 1])
+    graph_col_left, graph_col_right = st.columns(2)
     
     with graph_col_left:
         st.subheader("Tabular Overview Data")
