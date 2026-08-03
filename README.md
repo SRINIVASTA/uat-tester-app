@@ -14,7 +14,7 @@ A Python-based web application designed to streamline and automate User Acceptan
 * `app.py` - Core application logic, test runner, or web service interface.
 * `requirements.txt` - Python package dependencies needed to execute the application.
 * `.github/workflows/` - Automated CI/CD configurations for continuous script execution on push or pull requests.
-* `LICENSE` - Open-source software distribution permissions under the MIT License.
+* `LICENSE` - Exclusive portfolio viewing permissions. All rights reserved.
 
 ## 🛠️ Installation & Setup
 
