@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from datetime import datetime
 
 # Set web page configuration
@@ -22,7 +23,7 @@ data_option = st.sidebar.radio(
     ("Option A: Use Synthetic Data", "Option B: Upload Custom CSV Data")
 )
 
-# Option A: Handle Synthetic Data Generation (Updated with Severity and Timestamp placeholders)
+# Option A: Handle Synthetic Data Generation
 if data_option == "Option A: Use Synthetic Data":
     if st.session_state.current_mode != "synthetic" or not st.session_state.test_cases:
         st.session_state.test_cases = [
@@ -44,7 +45,7 @@ if data_option == "Option A: Use Synthetic Data":
                 "id": "TC-003", "module": "User Profile",
                 "scenario": "Attempt uploading an unsupported file format (.exe) as avatar picture.",
                 "steps": "1. Go to Profile Settings\n2. Click 'Change Avatar'\n3. Select a system executable (.exe file) and hit upload.",
-                "expected": "An validation warning banner states 'Invalid file format. Please upload JPG or PNG.' File block prevents execution.",
+                "expected": "A validation warning banner states 'Invalid file format. Please upload JPG or PNG.' File block prevents execution.",
                 "status": "Untested", "severity": "Critical", "notes": "", "tester": "", "last_updated": "Never"
             }
         ]
@@ -92,7 +93,6 @@ if st.session_state.test_cases:
     st.info("💡 Instructions for your Tester: Open your business website, follow the steps inside each item below, click 'Save Updates' after changing an outcome status, and export the file when finished.")
     
     for idx, tc in enumerate(st.session_state.test_cases):
-        # Displays the status, severity, and the automated timestamp inside the header block line
         with st.expander(f"**[{tc['id']}]** {tc['module']} - {tc['scenario']} | Status: **{tc['status']}** | Severity: **{tc['severity']}** | Updated: *{tc['last_updated']}*"):
             st.markdown(f"**Steps to Reproduce:**\n{tc['steps']}")
             st.markdown(f"**Expected Behavior:**\n{tc['expected']}")
@@ -117,40 +117,61 @@ if st.session_state.test_cases:
                 st.session_state.test_cases[idx]['severity'] = severity_input
                 st.session_state.test_cases[idx]['notes'] = notes_input
                 st.session_state.test_cases[idx]['tester'] = tester_name
-                # AUTOMATIC TIMESTAMP LOGGING
                 st.session_state.test_cases[idx]['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 st.success(f"Saved updates for {tc['id']}!")
                 st.rerun()
 
-    # Metrics & Native Progress Tracking Bar
+    # Metrics & Plotly Analytics Section
     st.divider()
     st.header("📊 Sign-Off Report & Breakout Metrics")
     df = pd.DataFrame(st.session_state.test_cases)
     
     # Text Metrics Cards
-    total_cases = len(df)
-    passed_cases = len(df[df['status'] == 'Passed'])
-    failed_cases = len(df[df['status'] == 'Failed'])
-    untested_cases = len(df[df['status'] == 'Untested'])
-    
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Cases Registered", total_cases)
-    m2.metric("Passed ✅", passed_cases)
-    m3.metric("Failed 🚨", failed_cases)
-    m4.metric("Untested", untested_cases)
+    m1.metric("Total Cases Registered", len(df))
+    m2.metric("Passed ✅", len(df[df['status'] == 'Passed']))
+    m3.metric("Failed 🚨", len(df[df['status'] == 'Failed']))
+    m4.metric("Untested", len(df[df['status'] == 'Untested']))
     
-    # NEW FEATURE: Visual progress calculation bar
-    st.subheader("🏁 Overall Testing Completion Progress")
-    completed_cases = total_cases - untested_cases
-    progress_percentage = int((completed_cases / total_cases) * 100) if total_cases > 0 else 0
+    # Graphic Layout Partition: Data Left, Interactive Chart Right
+    graph_col_left, graph_col_right = st.columns(2)
     
-    # Renders the clean loading progress bar
-    st.progress(progress_percentage / 100)
-    st.caption(f"**{progress_percentage}% Completed** ({completed_cases} out of {total_cases} test actions finalized)")
-
-    # Data Table Overview
-    st.subheader("Tabular Overview Data")
-    st.dataframe(df, use_container_width=True)
+    with graph_col_left:
+        st.subheader("Tabular Overview Data")
+        st.dataframe(df, use_container_width=True)
+    
+    with graph_col_right:
+        st.subheader("Plotly Interactive Status Breakdown")
+        if not df.empty and 'status' in df.columns:
+            # Grouping values dynamically for the Plotly framework engine
+            status_df = df['status'].value_counts().reset_index()
+            status_df.columns = ['Test Status', 'Count']
+            
+            # Map clean status colors
+            color_discrete_map = {'Passed': '#2ecc71', 'Failed': '#e74c3c', 'Untested': '#95a5a6', 'Blocked': '#f39c12'}
+            
+            # Generating an interactive Plotly Pie chart
+            fig = px.pie(
+                status_df, 
+                values='Count', 
+                names='Test Status', 
+                color='Test Status',
+                color_discrete_map=color_discrete_map,
+                hole=0.4
+            )
+            
+            # Clean layout updates so it sits perfectly inside dark/light themes
+            fig.update_layout(
+                margin=dict(l=20, r=20, t=20, b=20),
+                showlegend=True,
+                background_color="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)"
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No data rows available to render plot breakdown graphics.")
 
     # Export Feature
     csv_data = df.to_csv(index=False).encode('utf-8')
