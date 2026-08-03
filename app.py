@@ -123,13 +123,12 @@ if st.session_state.test_cases:
 
     # Metrics Headings & Reset Action Bar Area
     st.divider()
-    metrics_title_col, reset_btn_col = st.columns([3, 1])
+    metrics_title_col, reset_btn_col = st.columns(2)
     
     with metrics_title_col:
         st.header("📊 Sign-Off Report & Breakout Metrics")
         
     with reset_btn_col:
-        # FIXED: Global application workspace sweep reset button
         if st.button("♻️ Reset Workspace", use_container_width=True, help="Wipe all execution records back to Untested baseline variables"):
             for case in st.session_state.test_cases:
                 case['status'] = 'Untested'
@@ -141,14 +140,55 @@ if st.session_state.test_cases:
 
     df = pd.DataFrame(st.session_state.test_cases)
     
-    # Text Metrics Cards
+    # Text Metrics Calculation variables
+    total_count = len(df)
+    passed_count = len(df[df['status'] == 'Passed'])
+    failed_count = len(df[df['status'] == 'Failed'])
+    untested_count = len(df[df['status'] == 'Untested'])
+
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Cases Registered", len(df))
-    m2.metric("Passed ✅", len(df[df['status'] == 'Passed']))
-    m3.metric("Failed 🚨", len(df[df['status'] == 'Failed']))
-    m4.metric("Untested", len(df[df['status'] == 'Untested']))
+    m1.metric("Total Cases Registered", total_count)
+    m2.metric("Passed ✅", passed_count)
+    m3.metric("Failed 🚨", failed_count)
+    m4.metric("Untested", untested_count)
     
-    # Graphic Layout Partition: Data Left, Interactive Chart Right
+    # -------------------------------------------------------------
+    # AUTOMATIC CORE TRIGGER: SIGN-OFF EMAIL SYSTEM INSTANT-OPENER
+    # -------------------------------------------------------------
+    if passed_count == total_count and total_count > 0:
+        st.success("🎉 All tests have successfully passed! The Sign-Off email template has been generated below.")
+        
+        # Structure the email dynamically with calculated metrics text strings
+        email_body = f"""Subject: OFFICIAL SIGN-OFF: UAT Testing Complete & Successful for [Project Name]
+
+Hi Team,
+
+I am incredibly excited to announce that User Acceptance Testing (UAT) for [Project/Product Name] has officially concluded successfully as of August 2026.
+
+Our QA and business testing teams have completed a rigorous run-through of our core customer journeys, including critical modules across Authentication, Profile Systems, and the Checkout Workflow.
+
+Key Performance Highlights:
+- Total Test Cases Executed: {total_count}
+- Total Passing Scenarios: {passed_count} (100% Pass Rate)
+- Unresolved Critical / Blocking Bugs: {failed_count}
+
+Based on these spotless results, we are officially granting UAT sign-off. The software is confirmed to be highly stable, intuitive, and compliant with all core corporate requirements. We are clear to move forward into production deployment.
+
+A massive thank you to our UAT contract testers and development leads for getting this across the finish line smoothly. 
+
+I have attached the comprehensive UAT log report sheet to this email for your permanent stakeholder review records. Let’s get ready for a fantastic launch!
+
+Best regards,
+
+[Your Name]  
+[Your Title / Business Owner]  
+[Your Company Name]"""
+        
+        # Display the formatted email block with an easy copy-paste clipboard layout box
+        with st.expander("📋 VIEW AUTOMATIC COMPLIANCE SIGN-OFF EMAIL", expanded=True):
+            st.text_area("Copy and send this block to your company team mailing lists:", value=email_body, height=450)
+
+    # Graphic Layout Partition
     graph_col_left, graph_col_right = st.columns(2)
     
     with graph_col_left:
