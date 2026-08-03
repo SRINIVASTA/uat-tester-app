@@ -8,7 +8,7 @@ st.set_page_config(page_title="UAT Test Management Portal", layout="wide", page_
 
 # Title and Description
 st.title("🧪 User Acceptance Testing (UAT) Dashboard")
-st.caption("Document test suites, select item severity, view execution breakdown metrics, and sync deployment updates.")
+st.caption("A streamlined workspace for reviewing automated suites and managing custom corporate data uploads.")
 
 # Initialize global session state arrays
 if "test_cases" not in st.session_state:
@@ -23,7 +23,7 @@ data_option = st.sidebar.radio(
     ("Option A: Use Synthetic Data", "Option B: Upload Custom CSV Data")
 )
 
-# Option A: Handle Synthetic Data Generation (Updated with Severity fields)
+# Option A: Filled entirely by the AI (Synthetic Data Baseline)
 if data_option == "Option A: Use Synthetic Data":
     if st.session_state.current_mode != "synthetic" or not st.session_state.test_cases:
         st.session_state.test_cases = [
@@ -50,15 +50,15 @@ if data_option == "Option A: Use Synthetic Data":
             }
         ]
         st.session_state.current_mode = "synthetic"
-        st.sidebar.success("Loaded synthetic mock test suite!")
+        st.sidebar.success("🤖 AI-generated mock test suite loaded successfully!")
 
-# Option B: Handle Uploading Custom CSV Data
+# Option B: Upload handled entirely by you (The User)
 elif data_option == "Option B: Upload Custom CSV Data":
     if st.session_state.current_mode != "uploaded":
         st.session_state.test_cases = []  # Reset workspace state when toggling
         st.session_state.current_mode = "uploaded"
         
-    uploaded_file = st.sidebar.file_uploader("Upload your UAT template (CSV)", type=["csv"])
+    uploaded_file = st.sidebar.file_uploader("Upload your own corporate UAT file (CSV)", type=["csv"])
     
     if uploaded_file is not None:
         try:
@@ -76,75 +76,50 @@ elif data_option == "Option B: Upload Custom CSV Data":
                         uploaded_df[col] = ""
             
             st.session_state.test_cases = uploaded_df[required_cols].to_dict(orient="records")
-            st.sidebar.success("Successfully loaded your uploaded file!")
+            st.sidebar.success("📁 Your custom data file loaded successfully!")
         except Exception as e:
             st.sidebar.error(f"Error parsing file: {e}")
             
     elif not st.session_state.test_cases:
-        st.info("ℹ️ Please upload a UAT CSV file in the sidebar to populate the workspace.")
+        st.info("ℹ️ Please use the sidebar on the left to upload your custom company CSV testing file.")
         template_df = pd.DataFrame(columns=["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester"])
         template_csv = template_df.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Empty CSV Template Schema", data=template_csv, file_name="uat_template.csv", mime="text/csv")
-# Main Interface Workflows (If Data Contains Rows)
+# Main Interface Layout
 if st.session_state.test_cases:
-    col_left, col_right = st.columns(2)
-
-    # Left Column: Add test cases dynamically
-    with col_left:
-        st.header("📝 Create / Document Test Case")
-        with st.form("new_case_form", clear_on_submit=True):
-            tc_id = f"TC-00{len(st.session_state.test_cases) + 1}"
-            module = st.selectbox("Module/Feature Area", ["Authentication", "Checkout", "User Profile", "Settings"])
-            scenario = st.text_input("Test Scenario Summary")
-            steps = st.text_area("Step-by-Step Execution Guide")
-            expected = st.text_area("Expected Result Detail")
-            case_severity = st.selectbox("Initial Target Severity", ["Low", "Medium", "Critical"])
+    # Changed to 1 clean full-width column since manual creation forms were removed
+    st.header("🏃‍♂️ Test Suite Execution Run")
+    st.info("💡 Instructions for your Tester: Open your business website, follow the steps inside each item below, click 'Save Updates' after changing an outcome status, and export the file when finished.")
+    
+    for idx, tc in enumerate(st.session_state.test_cases):
+        with st.expander(f"**[{tc['id']}]** {tc['module']} - {tc['scenario']} | Status: **{tc['status']}** | Severity: **{tc['severity']}**"):
+            st.markdown(f"**Steps to Reproduce:**\n{tc['steps']}")
+            st.markdown(f"**Expected Behavior:**\n{tc['expected']}")
+            st.divider()
             
-            submit = st.form_submit_button("Add to Test Suite")
-            if submit:
-                if scenario and steps and expected:
-                    st.session_state.test_cases.append({
-                        "id": tc_id, "module": module, "scenario": scenario,
-                        "steps": steps, "expected": expected, "status": "Untested",
-                        "severity": case_severity, "notes": "", "tester": ""
-                    })
-                    st.success(f"Added {tc_id} successfully!")
-                    st.rerun()
-                else:
-                    st.error("Please fill out all fields.")
-
-    # Right Column: Run test parameters and choose severity levels
-    with col_right:
-        st.header("🏃‍♂️ Test Suite Execution Run")
-        for idx, tc in enumerate(st.session_state.test_cases):
-            with st.expander(f"**[{tc['id']}]** {tc['module']} - {tc['scenario']} | Status: **{tc['status']}** | Severity: **{tc['severity']}**"):
-                st.markdown(f"**Steps to Reproduce:**\n{tc['steps']}")
-                st.markdown(f"**Expected Behavior:**\n{tc['expected']}")
-                st.divider()
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                current_status = ["Untested", "Passed", "Failed", "Blocked"]
+                default_status_idx = current_status.index(tc['status']) if tc['status'] in current_status else 0
+                status_input = st.selectbox(f"Outcome ({tc['id']})", current_status, index=default_status_idx, key=f"status_{tc['id']}")
+            with c2:
+                current_severities = ["Low", "Medium", "Critical"]
+                default_sev_idx = current_severities.index(tc['severity']) if tc['severity'] in current_severities else 1
+                severity_input = st.selectbox(f"Bug Severity ({tc['id']})", current_severities, index=default_sev_idx, key=f"severity_{tc['id']}")
+            with c3:
+                tester_name = st.text_input("Tester Name/ID", value=tc['tester'], key=f"tester_{tc['id']}")
                 
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    current_status = ["Untested", "Passed", "Failed", "Blocked"]
-                    default_status_idx = current_status.index(tc['status']) if tc['status'] in current_status else 0
-                    status_input = st.selectbox(f"Outcome ({tc['id']})", current_status, index=default_status_idx, key=f"status_{tc['id']}")
-                with c2:
-                    current_severities = ["Low", "Medium", "Critical"]
-                    default_sev_idx = current_severities.index(tc['severity']) if tc['severity'] in current_severities else 1
-                    severity_input = st.selectbox(f"Bug Severity ({tc['id']})", current_severities, index=default_sev_idx, key=f"severity_{tc['id']}")
-                with c3:
-                    tester_name = st.text_input("Tester Name/ID", value=tc['tester'], key=f"tester_{tc['id']}")
-                    
-                notes_input = st.text_area("Execution Notes / Documentation Log", value=tc['notes'], key=f"notes_{tc['id']}")
-                
-                if st.button("Save Updates", key=f"save_{tc['id']}"):
-                    st.session_state.test_cases[idx]['status'] = status_input
-                    st.session_state.test_cases[idx]['severity'] = severity_input
-                    st.session_state.test_cases[idx]['notes'] = notes_input
-                    st.session_state.test_cases[idx]['tester'] = tester_name
-                    st.success(f"Saved execution adjustments for {tc['id']}!")
-                    st.rerun()
+            notes_input = st.text_area("Execution Notes / Documentation Log", value=tc['notes'], key=f"notes_{tc['id']}", placeholder="Type what broke or went wrong here...")
+            
+            if st.button("Save Updates", key=f"save_{tc['id']}"):
+                st.session_state.test_cases[idx]['status'] = status_input
+                st.session_state.test_cases[idx]['severity'] = severity_input
+                st.session_state.test_cases[idx]['notes'] = notes_input
+                st.session_state.test_cases[idx]['tester'] = tester_name
+                st.success(f"Saved updates for {tc['id']}!")
+                st.rerun()
 
-    # Metrics & Graphics Dashboard
+    # Metrics & Graphics Dashboard Section
     st.divider()
     st.header("📊 Sign-Off Report & Breakout Metrics")
     df = pd.DataFrame(st.session_state.test_cases)
@@ -194,7 +169,7 @@ if st.session_state.test_cases:
             ax.set_facecolor('none')
             st.pyplot(fig, use_container_width=False)
         else:
-            st.warning("No data rows available to render metrics visual breakdown matrix chart components.")
+            st.warning("No data rows available to render metrics.")
 
     # Export Feature
     csv_data = df.to_csv(index=False).encode('utf-8')
