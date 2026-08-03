@@ -15,6 +15,8 @@ if "test_cases" not in st.session_state:
     st.session_state.test_cases = []
 if "current_mode" not in st.session_state:
     st.session_state.current_mode = None
+if "uploaded_file_name" not in st.session_state:
+    st.session_state.uploaded_file_name = None
 
 # Sidebar Configuration
 st.sidebar.header("⚙️ Data Settings")
@@ -25,7 +27,7 @@ data_option = st.sidebar.radio(
 
 # Option A: Handle Synthetic Data Generation
 if data_option == "Option A: Use Synthetic Data":
-    if st.session_state.current_mode != "synthetic" or not st.session_state.test_cases:
+    if st.session_state.current_mode != "synthetic":
         st.session_state.test_cases = [
             {
                 "id": "TC-001", "module": "Authentication",
@@ -50,37 +52,42 @@ if data_option == "Option A: Use Synthetic Data":
             }
         ]
         st.session_state.current_mode = "synthetic"
+        st.session_state.uploaded_file_name = None  # Reset upload lock tracker
         st.sidebar.success("🤖 AI-generated mock test suite loaded successfully!")
 
-# Option B: Handle Uploading Custom CSV Data
+# Option B: Handle Uploading Custom CSV Data with Persistent Storage Lock
 elif data_option == "Option B: Upload Custom CSV Data":
     if st.session_state.current_mode != "uploaded":
         st.session_state.test_cases = []  # Reset workspace state when toggling
         st.session_state.current_mode = "uploaded"
+        st.session_state.uploaded_file_name = None
         
     uploaded_file = st.sidebar.file_uploader("Upload your own corporate UAT file (CSV)", type=["csv"])
     
+    # FIXED LOGIC: Only parse the file if it's new. Stops Streamlit from overwriting updates on click.
     if uploaded_file is not None:
-        try:
-            uploaded_df = pd.read_csv(uploaded_file)
-            required_cols = ["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester", "last_updated"]
-            
-            # Match schema structure configurations and add defaults if missing
-            for col in required_cols:
-                if col not in uploaded_df.columns:
-                    if col == "status":
-                        uploaded_df[col] = "Untested"
-                    elif col == "severity":
-                        uploaded_df[col] = "Medium"
-                    elif col == "last_updated":
-                        uploaded_df[col] = "Never"
-                    else:
-                        uploaded_df[col] = ""
-            
-            st.session_state.test_cases = uploaded_df[required_cols].to_dict(orient="records")
-            st.sidebar.success("📁 Your custom data file loaded successfully!")
-        except Exception as e:
-            st.sidebar.error(f"Error parsing file: {e}")
+        if st.session_state.uploaded_file_name != uploaded_file.name:
+            try:
+                uploaded_df = pd.read_csv(uploaded_file)
+                required_cols = ["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester", "last_updated"]
+                
+                # Match schema structure configurations and add defaults if missing
+                for col in required_cols:
+                    if col not in uploaded_df.columns:
+                        if col == "status":
+                            uploaded_df[col] = "Untested"
+                        elif col == "severity":
+                            uploaded_df[col] = "Medium"
+                        elif col == "last_updated":
+                            uploaded_df[col] = "Never"
+                        else:
+                            uploaded_df[col] = ""
+                
+                st.session_state.test_cases = uploaded_df[required_cols].to_dict(orient="records")
+                st.session_state.uploaded_file_name = uploaded_file.name  # Lock file name into memory
+                st.sidebar.success("📁 Your custom data file loaded successfully!")
+            except Exception as e:
+                st.sidebar.error(f"Error parsing file: {e}")
             
     elif not st.session_state.test_cases:
         st.info("ℹ️ Please use the sidebar on the left to upload your custom company CSV testing file.")
@@ -152,13 +159,10 @@ if st.session_state.test_cases:
     m3.metric("Failed 🚨", failed_count)
     m4.metric("Untested", untested_count)
     
-    # -------------------------------------------------------------
-    # AUTOMATIC CORE TRIGGER: SIGN-OFF EMAIL SYSTEM INSTANT-OPENER
-    # -------------------------------------------------------------
+    # Automated Sign-off Email Generator Trigger
     if passed_count == total_count and total_count > 0:
         st.success("🎉 All tests have successfully passed! The Sign-Off email template has been generated below.")
         
-        # Structure the email dynamically with calculated metrics text strings
         email_body = f"""Subject: OFFICIAL SIGN-OFF: UAT Testing Complete & Successful for [Project Name]
 
 Hi Team,
@@ -184,7 +188,6 @@ Best regards,
 [Your Title / Business Owner]  
 [Your Company Name]"""
         
-        # Display the formatted email block with an easy copy-paste clipboard layout box
         with st.expander("📋 VIEW AUTOMATIC COMPLIANCE SIGN-OFF EMAIL", expanded=True):
             st.text_area("Copy and send this block to your company team mailing lists:", value=email_body, height=450)
 
