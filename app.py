@@ -143,14 +143,11 @@ if st.session_state.test_cases:
     with graph_col_right:
         st.subheader("Plotly Interactive Status Breakdown")
         if not df.empty and 'status' in df.columns:
-            # Grouping values dynamically for the Plotly framework engine
             status_df = df['status'].value_counts().reset_index()
             status_df.columns = ['Test Status', 'Count']
             
-            # Map clean status colors
             color_discrete_map = {'Passed': '#2ecc71', 'Failed': '#e74c3c', 'Untested': '#95a5a6', 'Blocked': '#f39c12'}
             
-            # Generating an interactive Plotly Pie chart
             fig = px.pie(
                 status_df, 
                 values='Count', 
@@ -160,11 +157,11 @@ if st.session_state.test_cases:
                 hole=0.4
             )
             
-            # Clean layout updates so it sits perfectly inside dark/light themes
+            # FIXED: Removed 'background_color' to stop the layout parameter engine from crashing
             fig.update_layout(
                 margin=dict(l=20, r=20, t=20, b=20),
                 showlegend=True,
-                background_color="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)"
             )
             fig.update_traces(textposition='inside', textinfo='percent+label')
