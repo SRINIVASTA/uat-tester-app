@@ -183,7 +183,6 @@ if st.session_state.test_cases:
         fig, ax = plt.subplots(figsize=(4, 4))
         ax.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', startangle=140, colors=colors, textprops={'fontsize': 10})
         ax.axis('equal')
-')
         fig.patch.set_facecolor('none')  # Transparent backdrop configuration integration
         ax.set_facecolor('none')
         st.pyplot(fig)
