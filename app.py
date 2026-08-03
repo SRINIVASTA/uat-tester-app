@@ -121,9 +121,24 @@ if st.session_state.test_cases:
                 st.success(f"Saved updates for {tc['id']}!")
                 st.rerun()
 
-    # Metrics & Plotly Analytics Section
+    # Metrics Headings & Reset Action Bar Area
     st.divider()
-    st.header("📊 Sign-Off Report & Breakout Metrics")
+    metrics_title_col, reset_btn_col = st.columns([3, 1])
+    
+    with metrics_title_col:
+        st.header("📊 Sign-Off Report & Breakout Metrics")
+        
+    with reset_btn_col:
+        # FIXED: Global application workspace sweep reset button
+        if st.button("♻️ Reset Workspace", use_container_width=True, help="Wipe all execution records back to Untested baseline variables"):
+            for case in st.session_state.test_cases:
+                case['status'] = 'Untested'
+                case['notes'] = ''
+                case['tester'] = ''
+                case['last_updated'] = 'Never'
+            st.success("Workspace fields cleared back to default properties.")
+            st.rerun()
+
     df = pd.DataFrame(st.session_state.test_cases)
     
     # Text Metrics Cards
@@ -157,7 +172,6 @@ if st.session_state.test_cases:
                 hole=0.4
             )
             
-            # FIXED: Removed 'background_color' to stop the layout parameter engine from crashing
             fig.update_layout(
                 margin=dict(l=20, r=20, t=20, b=20),
                 showlegend=True,
