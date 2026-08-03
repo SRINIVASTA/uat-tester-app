@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 from datetime import datetime
 
 # Set web page configuration
@@ -8,7 +7,7 @@ st.set_page_config(page_title="UAT Test Management Portal", layout="wide", page_
 
 # Title and Description
 st.title("🧪 User Acceptance Testing (UAT) Dashboard")
-st.caption("A streamlined workspace for reviewing automated suites and managing custom corporate data uploads.")
+st.caption("Document test suites, select item severity, view execution breakdown metrics, and sync deployment updates.")
 
 # Initialize global session state arrays
 if "test_cases" not in st.session_state:
@@ -23,7 +22,7 @@ data_option = st.sidebar.radio(
     ("Option A: Use Synthetic Data", "Option B: Upload Custom CSV Data")
 )
 
-# Option A: Filled entirely by the AI (Synthetic Data Baseline)
+# Option A: Handle Synthetic Data Generation (Updated with Severity and Timestamp placeholders)
 if data_option == "Option A: Use Synthetic Data":
     if st.session_state.current_mode != "synthetic" or not st.session_state.test_cases:
         st.session_state.test_cases = [
@@ -32,27 +31,27 @@ if data_option == "Option A: Use Synthetic Data":
                 "scenario": "Verify user can log in with valid credentials.",
                 "steps": "1. Navigate to /login\n2. Enter valid email and password\n3. Click Login button.",
                 "expected": "User is redirected to the home dashboard and a success toast appears.",
-                "status": "Untested", "severity": "Medium", "notes": "", "tester": ""
+                "status": "Untested", "severity": "Medium", "notes": "", "tester": "", "last_updated": "Never"
             },
             {
                 "id": "TC-002", "module": "Checkout",
                 "scenario": "Apply a valid 10% discount promo code.",
                 "steps": "1. Add item to cart\n2. Navigate to /checkout\n3. Enter code 'SAVE10' and click Apply.",
                 "expected": "Total price decreases by 10% instantly. Success message displayed.",
-                "status": "Untested", "severity": "Low", "notes": "", "tester": ""
+                "status": "Untested", "severity": "Low", "notes": "", "tester": "", "last_updated": "Never"
             },
             {
                 "id": "TC-003", "module": "User Profile",
                 "scenario": "Attempt uploading an unsupported file format (.exe) as avatar picture.",
                 "steps": "1. Go to Profile Settings\n2. Click 'Change Avatar'\n3. Select a system executable (.exe file) and hit upload.",
                 "expected": "An validation warning banner states 'Invalid file format. Please upload JPG or PNG.' File block prevents execution.",
-                "status": "Untested", "severity": "Critical", "notes": "", "tester": ""
+                "status": "Untested", "severity": "Critical", "notes": "", "tester": "", "last_updated": "Never"
             }
         ]
         st.session_state.current_mode = "synthetic"
         st.sidebar.success("🤖 AI-generated mock test suite loaded successfully!")
 
-# Option B: Upload handled entirely by you (The User)
+# Option B: Handle Uploading Custom CSV Data
 elif data_option == "Option B: Upload Custom CSV Data":
     if st.session_state.current_mode != "uploaded":
         st.session_state.test_cases = []  # Reset workspace state when toggling
@@ -63,7 +62,7 @@ elif data_option == "Option B: Upload Custom CSV Data":
     if uploaded_file is not None:
         try:
             uploaded_df = pd.read_csv(uploaded_file)
-            required_cols = ["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester"]
+            required_cols = ["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester", "last_updated"]
             
             # Match schema structure configurations and add defaults if missing
             for col in required_cols:
@@ -72,6 +71,8 @@ elif data_option == "Option B: Upload Custom CSV Data":
                         uploaded_df[col] = "Untested"
                     elif col == "severity":
                         uploaded_df[col] = "Medium"
+                    elif col == "last_updated":
+                        uploaded_df[col] = "Never"
                     else:
                         uploaded_df[col] = ""
             
@@ -82,17 +83,17 @@ elif data_option == "Option B: Upload Custom CSV Data":
             
     elif not st.session_state.test_cases:
         st.info("ℹ️ Please use the sidebar on the left to upload your custom company CSV testing file.")
-        template_df = pd.DataFrame(columns=["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester"])
+        template_df = pd.DataFrame(columns=["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester", "last_updated"])
         template_csv = template_df.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Empty CSV Template Schema", data=template_csv, file_name="uat_template.csv", mime="text/csv")
 # Main Interface Layout
 if st.session_state.test_cases:
-    # Changed to 1 clean full-width column since manual creation forms were removed
     st.header("🏃‍♂️ Test Suite Execution Run")
     st.info("💡 Instructions for your Tester: Open your business website, follow the steps inside each item below, click 'Save Updates' after changing an outcome status, and export the file when finished.")
     
     for idx, tc in enumerate(st.session_state.test_cases):
-        with st.expander(f"**[{tc['id']}]** {tc['module']} - {tc['scenario']} | Status: **{tc['status']}** | Severity: **{tc['severity']}**"):
+        # Displays the status, severity, and the automated timestamp inside the header block line
+        with st.expander(f"**[{tc['id']}]** {tc['module']} - {tc['scenario']} | Status: **{tc['status']}** | Severity: **{tc['severity']}** | Updated: *{tc['last_updated']}*"):
             st.markdown(f"**Steps to Reproduce:**\n{tc['steps']}")
             st.markdown(f"**Expected Behavior:**\n{tc['expected']}")
             st.divider()
@@ -116,60 +117,40 @@ if st.session_state.test_cases:
                 st.session_state.test_cases[idx]['severity'] = severity_input
                 st.session_state.test_cases[idx]['notes'] = notes_input
                 st.session_state.test_cases[idx]['tester'] = tester_name
+                # AUTOMATIC TIMESTAMP LOGGING
+                st.session_state.test_cases[idx]['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 st.success(f"Saved updates for {tc['id']}!")
                 st.rerun()
 
-    # Metrics & Graphics Dashboard Section
+    # Metrics & Native Progress Tracking Bar
     st.divider()
     st.header("📊 Sign-Off Report & Breakout Metrics")
     df = pd.DataFrame(st.session_state.test_cases)
     
     # Text Metrics Cards
+    total_cases = len(df)
+    passed_cases = len(df[df['status'] == 'Passed'])
+    failed_cases = len(df[df['status'] == 'Failed'])
+    untested_cases = len(df[df['status'] == 'Untested'])
+    
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Cases Registered", len(df))
-    m2.metric("Passed ✅", len(df[df['status'] == 'Passed']))
-    m3.metric("Failed 🚨", len(df[df['status'] == 'Failed']))
-    m4.metric("Untested", len(df[df['status'] == 'Untested']))
+    m1.metric("Total Cases Registered", total_cases)
+    m2.metric("Passed ✅", passed_cases)
+    m3.metric("Failed 🚨", failed_cases)
+    m4.metric("Untested", untested_cases)
     
-    # Graphic Layout Partition
-    graph_col_left, graph_col_right = st.columns(2)
+    # NEW FEATURE: Visual progress calculation bar
+    st.subheader("🏁 Overall Testing Completion Progress")
+    completed_cases = total_cases - untested_cases
+    progress_percentage = int((completed_cases / total_cases) * 100) if total_cases > 0 else 0
     
-    with graph_col_left:
-        st.subheader("Tabular Overview Data")
-        st.dataframe(df, use_container_width=True)
-    
-    with graph_col_right:
-        st.subheader("Status Breakout Chart")
-        
-        if not df.empty and 'status' in df.columns:
-            status_counts = df['status'].value_counts()
-            
-            fig, ax = plt.subplots(figsize=(3, 3))
-            color_map = {'Passed': '#2ecc71', 'Failed': '#e74c3c', 'Untested': '#95a5a6', 'Blocked': '#f39c12'}
-            colors = [color_map.get(status, '#3498db') for status in status_counts.index]
-            
-            wedges, texts, autotexts = ax.pie(
-                status_counts, 
-                labels=status_counts.index, 
-                autopct='%1.1f%%', 
-                startangle=140, 
-                colors=colors,
-                wedgeprops=dict(width=0.4, edgecolor='white', linewidth=2)
-            )
-            
-            for text in texts:
-                text.set_color('#1e293b')
-                text.set_fontsize(9)
-            for autotext in autotexts:
-                autotext.set_color('#1e293b')
-                autotext.set_fontsize(8)
-                autotext.set_weight('bold')
-                
-            fig.patch.set_facecolor('none')
-            ax.set_facecolor('none')
-            st.pyplot(fig, use_container_width=False)
-        else:
-            st.warning("No data rows available to render metrics.")
+    # Renders the clean loading progress bar
+    st.progress(progress_percentage / 100)
+    st.caption(f"**{progress_percentage}% Completed** ({completed_cases} out of {total_cases} test actions finalized)")
+
+    # Data Table Overview
+    st.subheader("Tabular Overview Data")
+    st.dataframe(df, use_container_width=True)
 
     # Export Feature
     csv_data = df.to_csv(index=False).encode('utf-8')
