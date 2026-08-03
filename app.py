@@ -10,78 +10,34 @@ st.set_page_config(page_title="UAT Test Management Portal", layout="wide", page_
 st.title("🧪 User Acceptance Testing (UAT) Dashboard")
 st.caption("Document test suites, select item severity, view execution breakdown metrics, and sync deployment updates.")
 
-# Initialize global session state arrays
-if "test_cases" not in st.session_state:
-    st.session_state.test_cases = []
-if "current_mode" not in st.session_state:
-    st.session_state.current_mode = None
+# Initialize global session state arrays with auto-populated synthetic data
+if "test_cases" not in st.session_state or not st.session_state.test_cases:
+    st.session_state.test_cases = [
+        {
+            "id": "TC-001", "module": "Authentication",
+            "scenario": "Verify user can log in with valid credentials.",
+            "steps": "1. Navigate to /login\n2. Enter valid email and password\n3. Click Login button.",
+            "expected": "User is redirected to the home dashboard and a success toast appears.",
+            "status": "Untested", "severity": "Medium", "notes": "", "tester": ""
+        },
+        {
+            "id": "TC-002", "module": "Checkout",
+            "scenario": "Apply a valid 10% discount promo code.",
+            "steps": "1. Add item to cart\n2. Navigate to /checkout\n3. Enter code 'SAVE10' and click Apply.",
+            "expected": "Total price decreases by 10% instantly. Success message displayed.",
+            "status": "Untested", "severity": "Low", "notes": "", "tester": ""
+        },
+        {
+            "id": "TC-003", "module": "User Profile",
+            "scenario": "Attempt uploading an unsupported file format (.exe) as avatar picture.",
+            "steps": "1. Go to Profile Settings\n2. Click 'Change Avatar'\n3. Select a system executable (.exe file) and hit upload.",
+            "expected": "An validation warning banner states 'Invalid file format. Please upload JPG or PNG.' File block prevents execution.",
+            "status": "Untested", "severity": "Critical", "notes": "", "tester": ""
+        }
+    ]
 
-# Sidebar Configuration
-st.sidebar.header("⚙️ Data Settings")
-data_option = st.sidebar.radio(
-    "Choose your data source:",
-    ("Option A: Use Synthetic Data", "Option B: Upload Custom CSV Data")
-)
-
-# Option A: Handle Synthetic Data Generation (Updated with Severity fields)
-if data_option == "Option A: Use Synthetic Data":
-    if st.session_state.current_mode != "synthetic" or not st.session_state.test_cases:
-        st.session_state.test_cases = [
-            {
-                "id": "TC-001", "module": "Authentication",
-                "scenario": "Verify user can log in with valid credentials.",
-                "steps": "1. Navigate to /login\n2. Enter valid email and password\n3. Click Login button.",
-                "expected": "User is redirected to the home dashboard and a success toast appears.",
-                "status": "Untested", "severity": "Medium", "notes": "", "tester": ""
-            },
-            {
-                "id": "TC-002", "module": "Checkout",
-                "scenario": "Apply a valid 10% discount promo code.",
-                "steps": "1. Add item to cart\n2. Navigate to /checkout\n3. Enter code 'SAVE10' and click Apply.",
-                "expected": "Total price decreases by 10% instantly. Success message displayed.",
-                "status": "Untested", "severity": "Low", "notes": "", "tester": ""
-            }
-        ]
-        st.session_state.current_mode = "synthetic"
-        st.sidebar.success("Loaded synthetic mock test suite!")
-
-# Option B: Handle Uploading Custom CSV Data
-elif data_option == "Option B: Upload Custom CSV Data":
-    if st.session_state.current_mode != "uploaded":
-        st.session_state.test_cases = []  # Reset workspace state
-        st.session_state.current_mode = "uploaded"
-        
-    uploaded_file = st.sidebar.file_uploader("Upload your UAT template (CSV)", type=["csv"])
-    
-    if uploaded_file is not None:
-        try:
-            uploaded_df = pd.read_csv(uploaded_file)
-            required_cols = ["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester"]
-            
-            # Match schema structure configurations
-            for col in required_cols:
-                if col not in uploaded_df.columns:
-                    if col == "status":
-                        uploaded_df[col] = "Untested"
-                    elif col == "severity":
-                        uploaded_df[col] = "Medium"
-                    else:
-                        uploaded_df[col] = ""
-            
-            st.session_state.test_cases = uploaded_df[required_cols].to_dict(orient="records")
-            st.sidebar.success("Successfully loaded your uploaded file!")
-        except Exception as e:
-            st.sidebar.error(f"Error parsing file: {e}")
-            
-    elif not st.session_state.test_cases:
-        st.info("ℹ️ Please upload a UAT CSV file in the sidebar to populate the workspace.")
-        template_df = pd.DataFrame(columns=["id", "module", "scenario", "steps", "expected", "status", "severity", "notes", "tester"])
-        template_csv = template_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Empty CSV Template Schema", data=template_csv, file_name="uat_template.csv", mime="text/csv")
-
-# Render interface workflows if elements exist in scope
+# Render interface workflows
 if st.session_state.test_cases:
-    # FIXED: Added integer '2' to explicitly declare the side-by-side workspace split
     col_left, col_right = st.columns(2)
 
     # Left Column: Add test cases dynamically
